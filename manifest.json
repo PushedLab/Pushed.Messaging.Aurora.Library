@@ -1,0 +1,6 @@
+{
+    "capabilities": [
+        "RuntimeManager.TaskControl",
+        "Location.GeoPosition"
+    ]
+}

@@ -1,0 +1,9 @@
+sdk:
+  - stable
+stages:
+  # Register two jobs to run under the `analyze` stage.
+  - analyze:
+      - analyze
+      - format
+  - unit_test:
+      - test

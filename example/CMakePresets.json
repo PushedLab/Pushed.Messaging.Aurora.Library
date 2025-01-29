@@ -1,0 +1,14 @@
+{
+    "configurePresets": [
+        {
+            "name": "linux-debug",
+            "hidden": false,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_PREFIX_PATH": "/usr/lib/cmake/flutter-embedder"
+            }
+        }
+    ]
+}
