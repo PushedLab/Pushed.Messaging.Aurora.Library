@@ -11,9 +11,9 @@
 #include "pluginservice.h"
 //******************************************************************************
 //******************************************************************************
-class PluginController
+class PluginController : public QObject
 {
-    // Q_OBJECT
+    Q_OBJECT
 
 public:
     explicit PluginController(PluginRegistrar *registrar);
@@ -46,6 +46,10 @@ private:
     std::unique_ptr<Aurora::PushNotifications::Client> m_notificationsClient;
 
     QString m_applicationId;
+    QString m_registrationId;
+
+private slots:
+    void _setRegistrationId(const QString &registrationId);
 };
 
 #endif // APPLICATIONCONTROLLER_H

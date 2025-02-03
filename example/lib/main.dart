@@ -32,7 +32,7 @@ class _MyAppState extends State<MyApp> {
     try {
       registrationId = await _auroraPushPlugin.initialize(
         // TODO: Add your applicationId from Aurora Center.
-        applicationId: '',
+        applicationId: 'apptest_cu94g71p82rv8cgabsi0',
       );
       if (registrationId.isNotEmpty) setState(() {});
       messagesSubscription ??=

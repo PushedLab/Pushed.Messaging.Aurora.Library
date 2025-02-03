@@ -7,6 +7,7 @@
 #include <QtCore/QJsonDocument>
 #include <QtCore/QDebug>
 #include <QtCore/QString>
+#include <QtCore/QObject>
 #include <QtGui/QGuiApplication>
 #include <QtQml/QQmlContext>
 #include <QtQuick/QQuickView>
@@ -26,6 +27,71 @@ PluginController::PluginController(PluginRegistrar *registrar)
 {
     m_notificationsChannel->SetMethodCallHandler([this](const MethodCall &call, UniqueMethodResult result)
                                                  { on_method_call(call, std::move(result)); });
+
+    // Подключаем сигналы от пуш-клиента к обработчикам
+    connect(m_notificationsClient.get(),
+            &Aurora::PushNotifications::Client::clientInactive,
+            [this]()
+            {
+                qDebug() << "Aurora::PushNotifications::Client::clientInactive";
+                // Возможно, тут стоит добавить перезапуск или уведомление пользователю
+            });
+
+    connect(m_notificationsClient.get(),
+            &Aurora::PushNotifications::Client::pushSystemReadinessChanged,
+            [this](bool status)
+            {
+                qWarning() << "Push system is" << (status ? "available" : "not available");
+                m_notificationsChannel->InvokeMethod("Messaging#onReadinessChanged",
+                                                     std::make_unique<EncodableValue>(EncodableValue(status)));
+            });
+
+    connect(m_notificationsClient.get(),
+            &Aurora::PushNotifications::Client::registrationId,
+            this,
+            &PluginController::_setRegistrationId);
+
+    connect(m_notificationsClient.get(),
+            &Aurora::PushNotifications::Client::registrationError,
+            [this]()
+            {
+                qDebug() << "Push system have problems with registrationId";
+                m_notificationsChannel->InvokeMethod(
+                    "Messaging#onRegistrationError",
+                    std::make_unique<EncodableValue>(EncodableValue("Push system have problems with registrationId")));
+            });
+
+    connect(m_notificationsClient.get(),
+            &Aurora::PushNotifications::Client::notifications,
+            [this](const Aurora::PushNotifications::PushList &pushList)
+            {
+                for (const auto &push : pushList)
+                {
+                    QJsonDocument jsonDocument = QJsonDocument::fromJson(push.data.toUtf8());
+                    QString notifyType = jsonDocument.object().value("mtype").toString();
+
+                    if (notifyType == QStringLiteral("action"))
+                    {
+                        continue;
+                    }
+
+                    static QVariant defaultAction = Notification::remoteAction(QStringLiteral("default"), tr("Open app"),
+                                                                               PluginService::notifyDBusService(),
+                                                                               PluginService::notifyDBusPath(),
+                                                                               PluginService::notifyDBusIface(),
+                                                                               PluginService::notifyDBusMethod());
+
+                    qDebug() << Q_FUNC_INFO << push.title << push.message;
+
+                    EncodableMap pushParams;
+                    pushParams.emplace(std::make_pair(EncodableValue("title"), EncodableValue(push.title.toStdString())));
+                    pushParams.emplace(std::make_pair(EncodableValue("message"), EncodableValue(push.message.toStdString())));
+
+                    m_notificationsChannel->InvokeMethod(
+                        "Messaging#onMessage",
+                        std::make_unique<EncodableValue>(EncodableValue(pushParams)));
+                }
+            });
 }
 
 void PluginController::on_method_call(const MethodCall &call, UniqueMethodResult result)
@@ -44,7 +110,10 @@ void PluginController::init(const EncodableValue *args, UniqueMethodResult resul
     qDebug() << Q_FUNC_INFO;
 
     // Инициализация сервисов
-    m_service = std::make_unique<PluginService>(qApp);
+    if (!m_service) // Создаём только если не существует
+    {
+        m_service = std::make_unique<PluginService>(qApp);
+    }
 
     const std::string applicationId = args->GetValue<std::string>("applicationId").value_or("");
 
@@ -72,6 +141,7 @@ void PluginController::setApplicationId(const QString &applicationId)
     if (m_applicationId == applicationId)
     {
         qDebug() << "Application ID is already set, skipping.";
+        m_notificationsClient->registrate();
         return;
     }
 
@@ -79,10 +149,30 @@ void PluginController::setApplicationId(const QString &applicationId)
     m_notificationsClient->setApplicationId(applicationId);
     m_notificationsClient->registrate();
 
+    emit applicationIdChanged(applicationId);
     qDebug() << "Application ID set and registered.";
 }
 
 void PluginController::unimplemented(const EncodableValue *, UniqueMethodResult response)
 {
     response->NotImplemented();
+}
+
+void PluginController::_setRegistrationId(const QString &registrationId)
+{
+    qDebug() << Q_FUNC_INFO << "Received registrationId:" << registrationId;
+
+    if (registrationId == m_registrationId)
+    {
+        qDebug() << "Registration ID is the same, skipping...";
+        return;
+    }
+
+    m_registrationId = registrationId;
+
+    qDebug() << "Sending registrationId to Flutter: " << registrationId.toStdString().c_str();
+
+    m_notificationsChannel->InvokeMethod(
+        "Messaging#applicationRegistered",
+        std::make_unique<EncodableValue>(EncodableValue(registrationId.toStdString())));
 }
