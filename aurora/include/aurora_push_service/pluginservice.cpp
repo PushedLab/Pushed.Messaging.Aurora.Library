@@ -68,17 +68,20 @@ PluginService::PluginService(QObject *parent)
     setAutoRelaySignals(true);
 
     QDBusConnection dbus = QDBusConnection::sessionBus();
-    dbus.registerObject(dbusPathStr, this, QDBusConnection::ExportAllSlots);
-    if (!isRegistered()) 
+
+    // Register the object
+    bool objectRegistered = dbus.registerObject(dbusPathStr, this, QDBusConnection::ExportAllSlots);
+    if (!objectRegistered)
     {
-        bool success = dbus.registerService(dbusServiceStr);
-        if (!success)
-        {
-            // Когда здесь может произойти ошибка?
-            // TODO emit error?
-            // qApp->quit();
-            qDebug() << Q_FUNC_INFO << "dbus.registerService failed";
-        }
+        qDebug() << Q_FUNC_INFO << "Failed to register DBus object at path:" << dbusPathStr;
+    }
+
+    // Register the service
+    bool success = dbus.registerService(dbusServiceStr);
+    if (!success)
+    {
+        qDebug() << Q_FUNC_INFO << "dbus.registerService failed for" << dbusServiceStr;
+        qDebug() << "DBus last error:" << dbus.lastError().message();
     }
 }
 
@@ -131,10 +134,27 @@ QString PluginService::notifyDBusMethod()
 int PluginService::updateApplicationArgs(const QStringList &arguments)
 {
     qDebug() << Q_FUNC_INFO;
+    qDebug() << "Arguments received:" << arguments;
 
     QDBusMessage message = QDBusMessage::createMethodCall(dbusServiceStr, dbusPathStr, dbusIfaceStr, dbusMethodStr);
     message.setArguments(QList<QVariant>() << arguments);
+
+    qDebug() << "Sending DBus message to:"
+             << "Service:" << dbusServiceStr
+             << "Path:" << dbusPathStr
+             << "Interface:" << dbusIfaceStr
+             << "Method:" << dbusMethodStr;
+
     QDBusMessage reply = QDBusConnection::sessionBus().call(message);
+
+    if (reply.type() == QDBusMessage::ErrorMessage)
+    {
+        qDebug() << "DBus Error:" << reply.errorMessage();
+    }
+    else
+    {
+        qDebug() << "DBus Reply:" << reply.arguments();
+    }
 
     return 0;
 }
@@ -162,4 +182,5 @@ void PluginService::handleApplicationWakeUp()
 {
     // somehow show flutter app
     emit guiRequested();
+    // }
 }

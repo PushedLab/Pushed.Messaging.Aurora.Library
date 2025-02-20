@@ -18,9 +18,9 @@ set(CMAKE_AUTOUIC ON)
 set(APP_ID_PATH /usr/share/${PROJECT_NAME}) 
 set(APP_ID_FILE applicationidz)
 
-add_definitions(-DDBUS_SERVICE="ru.auroraos.PushReceiver")
-add_definitions(-DDBUS_PATH="/ru/auroraos/PushReceiver")
-add_definitions(-DDBUS_INTERFACE="ru.auroraos.PushReceiver")
+add_definitions(-DDBUS_SERVICE="com.example.aurora_push_example")
+add_definitions(-DDBUS_PATH="/com/example/aurora_push_example")
+add_definitions(-DDBUS_INTERFACE="com.example.aurora_push_example")
 add_definitions(-DAPP_ID_FILE_PATH="${APP_ID_PATH}/${APP_ID_FILE}")
 
 find_package(PkgConfig REQUIRED)

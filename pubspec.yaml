@@ -14,25 +14,6 @@ dependencies:
   flutter:
     sdk: flutter
   plugin_platform_interface: ^2.0.2 
-  web_socket_channel: ^3.0.2 
-  path_provider: ^2.0.15
-  path_provider_aurora:
-    git:
-      url: https://gitlab.com/omprussia/flutter/packages.git
-      ref: aurora-path_provider_aurora-0.6.0
-      path: packages/path_provider_aurora
-  shared_preferences: ^2.3.3
-  shared_preferences_aurora:
-    git:
-      url: https://gitlab.com/omprussia/flutter/packages.git
-      path: packages/shared_preferences_aurora
-      ref: aurora-shared_preferences_aurora-0.5.4
-  workmanager: ^0.5.2
-  workmanager_aurora:
-    git:
-      url: https://gitlab.com/omprussia/flutter/flutter-community-plugins/workmanager_aurora.git
-      ref: aurora-0.0.1
-  http: ^1.3.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

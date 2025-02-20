@@ -6,7 +6,9 @@ import 'package:aurora_push_service/aurora_push_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 // ignore_for_file: use_build_context_synchronously
 
-void main() {
+void main() async {
+  await AuroraPushService()
+      .initialize(applicationId: 'appfluttest_cumsutpp82rl9tjniai0');
   runApp(const MyApp());
 }
 
@@ -18,6 +20,13 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    initPlatformState(context);
+  }
+
   final pushes = <AuroraPushMessage>[];
   final _auroraPushPlugin = const AuroraPushService();
   StreamSubscription<AuroraPushMessage>? messagesSubscription;
@@ -32,7 +41,7 @@ class _MyAppState extends State<MyApp> {
     try {
       registrationId = await _auroraPushPlugin.initialize(
         // TODO: Add your applicationId from Aurora Center.
-        applicationId: 'apptest_cu94g71p82rv8cgabsi0',
+        applicationId: 'appfluttest_cumsutpp82rl9tjniai0',
       );
       if (registrationId.isNotEmpty) setState(() {});
       messagesSubscription ??=

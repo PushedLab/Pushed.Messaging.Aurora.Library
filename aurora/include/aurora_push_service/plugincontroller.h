@@ -11,6 +11,7 @@
 #include "pluginservice.h"
 //******************************************************************************
 //******************************************************************************
+class QQuickView;
 class PluginController : public QObject
 {
     Q_OBJECT
@@ -47,6 +48,8 @@ private:
 
     QString m_applicationId;
     QString m_registrationId;
+
+    QQuickView *m_view{nullptr};
 
 private slots:
     void _setRegistrationId(const QString &registrationId);

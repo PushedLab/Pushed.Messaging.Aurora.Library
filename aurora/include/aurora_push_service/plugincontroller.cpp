@@ -16,6 +16,7 @@
 
 #include <aurora_push_service/aurora_push_service_plugin.h>
 #include <flutter/method_channel.h>
+#include <flutter/flutter_aurora.h>
 
 PluginController::PluginController(PluginRegistrar *registrar)
     : m_notificationsChannel(std::make_unique<MethodChannel>(
@@ -87,9 +88,20 @@ PluginController::PluginController(PluginRegistrar *registrar)
                     pushParams.emplace(std::make_pair(EncodableValue("title"), EncodableValue(push.title.toStdString())));
                     pushParams.emplace(std::make_pair(EncodableValue("message"), EncodableValue(push.message.toStdString())));
 
-                    m_notificationsChannel->InvokeMethod(
-                        "Messaging#onMessage",
-                        std::make_unique<EncodableValue>(EncodableValue(pushParams)));
+                    Notification notification;
+                    notification.setAppName(tr("Push Receiver"));
+                    notification.setSummary(push.title);
+                    notification.setBody(push.message);
+                    notification.setIsTransient(false);
+                    notification.setItemCount(1);
+                    notification.setHintValue("x-nemo-feedback", "sms_exists");
+                    notification.setRemoteAction(defaultAction);
+                    notification.setUrgency(Notification::Urgency::Critical);
+                    notification.publish();
+
+                    // m_notificationsChannel->InvokeMethod(
+                    //     "Messaging#onMessage",
+                    //     std::make_unique<EncodableValue>(EncodableValue(pushParams)));
                 }
             });
 }

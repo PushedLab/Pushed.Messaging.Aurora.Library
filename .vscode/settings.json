@@ -64,7 +64,9 @@
         "thread": "cpp",
         "typeinfo": "cpp",
         "variant": "cpp",
-        "cinttypes": "cpp"
+        "cinttypes": "cpp",
+        "codecvt": "cpp",
+        "fstream": "cpp"
     },
     "cmake.sourceDirectory": "/home/saul/dev/aurora/aurora_push_service/aurora"
 }
