@@ -2,12 +2,12 @@
 // for details. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-import 'package:aurora_push_service/src/aurora_push_message.dart';
+import 'package:pushed_messaging/src/aurora_push_message.dart';
 import 'aurora_push_platform_interface.dart';
 
 /// Сервис для получения пуш уведомлений от ОС Аврора и Аврора Центра.
-class AuroraPushService {
-  const AuroraPushService();
+class PushedMessaging {
+  const PushedMessaging();
 
   /// Инициализация пуш сервиса.
   ///

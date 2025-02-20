@@ -4,8 +4,8 @@
 
 import 'dart:async';
 
-import 'package:aurora_push_service/src/aurora_push_exception.dart';
-import 'package:aurora_push_service/src/aurora_push_message.dart';
+import 'package:pushed_messaging/src/aurora_push_exception.dart';
+import 'package:pushed_messaging/src/aurora_push_message.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -13,7 +13,7 @@ import 'aurora_push_platform_interface.dart';
 
 class MethodChannelAuroraMessaging extends AuroraPushPlatform {
   @visibleForTesting
-  static const channel = MethodChannel('friflex/aurora_push_service');
+  static const channel = MethodChannel('friflex/pushed_messaging');
 
   @visibleForTesting
   static Completer<String>? initCompleter;

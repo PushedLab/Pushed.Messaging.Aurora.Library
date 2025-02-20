@@ -2,16 +2,16 @@
 #define FLUTTER_PLUGIN_AURORA_PUSH_SERVICE_PLUGIN_H
 
 #include <flutter/plugin_registrar.h>
-#include <aurora_push_service/globals.h>
+#include <pushed_messaging/globals.h>
 #include "types.h"
 #include "plugincontroller.h"
 #include <memory>
 #include <QtCore/QObject>
 
-class PLUGIN_EXPORT AuroraPushServicePlugin final : public Plugin
+class PLUGIN_EXPORT PushedMessagingPlugin final : public Plugin
 {
 public:
-    AuroraPushServicePlugin(std::unique_ptr<PluginController> plugin_controller);
+    PushedMessagingPlugin(std::unique_ptr<PluginController> plugin_controller);
 
     static void RegisterWithRegistrar(PluginRegistrar *registrar);
 

@@ -1,4 +1,4 @@
-# aurora_push_service
+# pushed_messaging
 
 Сервис для получения пуш уведомлений от Aurora OS.
 
@@ -38,9 +38,9 @@ Permissions=PushNotifications;Internet
 После этого можно использовать Flutter плагин.
 ```dart
 // Call after WidgetsFlutterBinding.ensureInitialized();
-final auroraPushService = const AuroraPushService();
+final auroraPushService = const PushedMessaging();
 final notificationPlugin = FlutterLocalNotificationsPlugin();
-// Шаг 1: Инициализируйте AuroraPushService.
+// Шаг 1: Инициализируйте PushedMessaging.
 final registrationId = await auroraPushService.initialize(
         // TODO: Add your applicationId from Aurora Center
         applicationId: '',

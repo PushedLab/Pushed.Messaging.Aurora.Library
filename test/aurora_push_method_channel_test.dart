@@ -2,16 +2,16 @@
 // for details. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-import 'package:aurora_push_service/aurora_push_service.dart';
+import 'package:pushed_messaging/pushed_messaging.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  late AuroraPushService pushService;
+  late PushedMessaging pushService;
 
   setUp(() {
     TestWidgetsFlutterBinding.ensureInitialized();
-    pushService = const AuroraPushService();
+    pushService = const PushedMessaging();
   });
 
   test('initialize throws application_id_empty exception', () async {

@@ -1,5 +1,5 @@
 name: aurora_push_example
-description: Demonstrates how to use the aurora_push_service plugin.
+description: Demonstrates how to use the pushed_messaging plugin.
 version: 0.2.0+2
 publish_to: 'none'
 
@@ -9,7 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  aurora_push_service:
+  pushed_messaging:
     path: ../
   cupertino_icons: ^1.0.2
   flutter_local_notifications: ^18.0.1

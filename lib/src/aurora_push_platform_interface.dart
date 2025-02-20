@@ -4,8 +4,8 @@
 
 import 'dart:async';
 
-import 'package:aurora_push_service/src/aurora_push_message.dart';
-import 'package:aurora_push_service/src/method_channel_messaging.dart';
+import 'package:pushed_messaging/src/aurora_push_message.dart';
+import 'package:pushed_messaging/src/method_channel_messaging.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 abstract class AuroraPushPlatform extends PlatformInterface {

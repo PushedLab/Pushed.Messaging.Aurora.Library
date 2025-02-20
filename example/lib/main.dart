@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 
 import 'package:flutter/services.dart';
-import 'package:aurora_push_service/aurora_push_service.dart';
+import 'package:pushed_messaging/pushed_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 // ignore_for_file: use_build_context_synchronously
 
 void main() async {
-  await AuroraPushService()
+  await PushedMessaging()
       .initialize(applicationId: 'appfluttest_cumsutpp82rl9tjniai0');
   runApp(const MyApp());
 }
@@ -28,7 +28,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   final pushes = <AuroraPushMessage>[];
-  final _auroraPushPlugin = const AuroraPushService();
+  final _auroraPushPlugin = const PushedMessaging();
   StreamSubscription<AuroraPushMessage>? messagesSubscription;
   String registrationId = '';
   int notificationCounterId = 0;
@@ -99,7 +99,7 @@ class _MyAppState extends State<MyApp> {
           children: [
             if (!wasInitialized)
               const Text(
-                'Tap FAB to initialize AuroraPushService.',
+                'Tap FAB to initialize PushedMessaging.',
               ),
             if (registrationId.isNotEmpty)
               ListTile(

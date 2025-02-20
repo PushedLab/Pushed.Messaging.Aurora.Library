@@ -68,5 +68,5 @@
         "codecvt": "cpp",
         "fstream": "cpp"
     },
-    "cmake.sourceDirectory": "/home/saul/dev/aurora/aurora_push_service/aurora"
+    "cmake.sourceDirectory": "/home/saul/dev/aurora/pushed_messaging/aurora"
 }

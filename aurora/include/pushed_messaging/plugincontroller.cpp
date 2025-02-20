@@ -14,14 +14,14 @@
 // #include <auroraapp.h>
 #include <nemonotifications-qt5/notification.h>
 
-#include <aurora_push_service/aurora_push_service_plugin.h>
+#include <pushed_messaging/pushed_messaging_plugin.h>
 #include <flutter/method_channel.h>
 #include <flutter/flutter_aurora.h>
 
 PluginController::PluginController(PluginRegistrar *registrar)
     : m_notificationsChannel(std::make_unique<MethodChannel>(
           registrar->messenger(),
-          "friflex/aurora_push_service",
+          "friflex/pushed_messaging",
           &StandardMethodCodec::GetInstance())),
       m_notificationsClient(std::make_unique<Aurora::PushNotifications::Client>(qApp))
 

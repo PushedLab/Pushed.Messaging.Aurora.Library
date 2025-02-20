@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
-set(PROJECT_NAME aurora_push_service)
-set(PLUGIN_NAME  aurora_push_service_platform_plugin)
+set(PROJECT_NAME pushed_messaging)
+set(PLUGIN_NAME  pushed_messaging_platform_plugin)
 
 project(${PROJECT_NAME} LANGUAGES CXX)
 
@@ -31,9 +31,9 @@ pkg_check_modules(NemoNotifications-Qt5 REQUIRED IMPORTED_TARGET nemonotificatio
 pkg_check_modules(PushClient REQUIRED IMPORTED_TARGET pushclient)
 
 add_library(${PLUGIN_NAME} SHARED 
-            include/aurora_push_service/plugincontroller.cpp
-            include/aurora_push_service/pluginservice.cpp
-            aurora_push_service_plugin.cpp)
+            include/pushed_messaging/plugincontroller.cpp
+            include/pushed_messaging/pluginservice.cpp
+            pushed_messaging_plugin.cpp)
 
 set_target_properties(${PLUGIN_NAME} PROPERTIES CXX_VISIBILITY_PRESET hidden)
 
