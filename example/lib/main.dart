@@ -4,11 +4,49 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:pushed_messaging/pushed_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 // ignore_for_file: use_build_context_synchronously
 
+@pragma('vm:entry-point')
+Future<void> backgroundMessage(Map<dynamic, dynamic> message) async {
+  // Ensure widgets and bindings are initialized
+  WidgetsFlutterBinding.ensureInitialized();
+  // await loggerAdd('Background message works');
+
+  try {
+    // Initialize SharedPreferences to save notification data
+    final prefs = await SharedPreferences.getInstance();
+
+    print("Aurora Background Message: $message");
+
+    // Extract title and body from the message payload
+    String title = (message["data"]?["title"]) ?? "Уведомление";
+    String body = (message["data"]?["body"]) ?? "";
+
+    if (title.isNotEmpty) await prefs.setString("last_title", title);
+    if (body.isNotEmpty) await prefs.setString("last_body", body);
+
+    // Initialize the Aurora notification plugin
+    final FlutterLocalNotificationsPlugin notifications =
+        FlutterLocalNotificationsPlugin();
+
+    // Display the notification using Aurora notification system
+    await notifications.show(
+        0, // Notification ID (can be any unique value)
+        title, // Notification title
+        body, // Notification body
+        null // Optional payload data
+        );
+
+    // await addLog("Notification sent: $title - $body");
+  } catch (e) {
+    // await addLog("Error in notification: $e");
+  }
+}
+
 void main() async {
-  await PushedMessaging()
-      .initialize(applicationId: 'appfluttest_cumsutpp82rl9tjniai0');
+  await PushedMessaging().initialize(backgroundMessage,
+      applicationId: 'appfluttest_cumsutpp82rl9tjniai0');
   runApp(const MyApp());
 }
 
@@ -29,7 +67,7 @@ class _MyAppState extends State<MyApp> {
 
   final pushes = <AuroraPushMessage>[];
   final _auroraPushPlugin = const PushedMessaging();
-  StreamSubscription<AuroraPushMessage>? messagesSubscription;
+  StreamSubscription? messagesSubscription;
   String registrationId = '';
   int notificationCounterId = 0;
   bool wasInitialized = false;
@@ -41,22 +79,23 @@ class _MyAppState extends State<MyApp> {
     try {
       registrationId = await _auroraPushPlugin.initialize(
         // TODO: Add your applicationId from Aurora Center.
+        backgroundMessage,
         applicationId: 'appfluttest_cumsutpp82rl9tjniai0',
       );
       if (registrationId.isNotEmpty) setState(() {});
       messagesSubscription ??=
           _auroraPushPlugin.onMessage.listen((event) async {
         if (!mounted) return;
-        setState(() {
-          pushes.add(event);
-        });
+        // setState(() {
+        //   pushes.add(event);
+        // });
         final notificationPlugin = FlutterLocalNotificationsPlugin();
-        await notificationPlugin.show(
-          notificationCounterId++,
-          "#$notificationCounterId ${event.title}",
-          "${event.message}",
-          null,
-        );
+        // await notificationPlugin.show(
+        //   notificationCounterId++,
+        //   "#$notificationCounterId ${event.title}",
+        //   "${event.message}",
+        //   null,
+        // );
       });
     } on Object catch (e) {
       if (!mounted) return;

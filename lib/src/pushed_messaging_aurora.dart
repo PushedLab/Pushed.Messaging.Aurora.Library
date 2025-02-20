@@ -3,29 +3,35 @@
 // BSD-style license that can be found in the LICENSE file.
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:pushed_messaging/src/aurora_push_exception.dart';
 import 'package:pushed_messaging/src/aurora_push_message.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+import 'pushed_messaging_platform_interface.dart';
 
-import 'aurora_push_platform_interface.dart';
-
-class MethodChannelAuroraMessaging extends AuroraPushPlatform {
+class PushedMessagingAurora extends PushedMessagingPlatform {
+  WebSocketChannel? webChannel;
+  StreamSubscription? subs;
+  Function? bgHandler;
+  bool active = false;
   @visibleForTesting
-  static const channel = MethodChannel('friflex/pushed_messaging');
+  static const channel = MethodChannel('pushed_messaging');
 
   @visibleForTesting
   static Completer<String>? initCompleter;
 
   static void setMethodCallHandlers() {
     WidgetsFlutterBinding.ensureInitialized();
-    MethodChannelAuroraMessaging.channel.setMethodCallHandler((call) async {
+    PushedMessagingAurora.channel.setMethodCallHandler((call) async {
       switch (call.method) {
         case 'Messaging#onMessage':
           final messageMap = Map<String, dynamic>.from(call.arguments);
-          AuroraPushPlatform.onMessage
-              .add(AuroraPushMessage.fromMap(messageMap));
+          print(messageMap);
+          PushedMessagingPlatform.messageController.sink.add(messageMap);
           break;
         case 'Messaging#onReadinessChanged':
           final isAvailable = call.arguments as bool;
@@ -54,7 +60,8 @@ class MethodChannelAuroraMessaging extends AuroraPushPlatform {
   }
 
   @override
-  Future<String> initialize({required String applicationId}) async {
+  Future<String> initialize(Function(Map<dynamic, dynamic>) bgHandler,
+      {required String applicationId}) async {
     if (initCompleter != null) {
       throw AuroraPushException(
         code: 'init_completer_not_finished',
@@ -83,7 +90,20 @@ class MethodChannelAuroraMessaging extends AuroraPushPlatform {
       );
       // Сбрасываем initCompleter чтобы не вызывать потенциальных ошибок с
       // получением нескольких колбеков от аврора-side плагина.
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? "";
+      final newToken =
+          await getNewToken(token, auroraRegistrationId: registrationId);
+
+      PushedMessagingPlatform.pushToken = newToken;
+      print(newToken);
+      if (newToken.isNotEmpty) {
+        await connect(newToken, bgHandler);
+      }
       initCompleter = null;
+      PushedMessagingPlatform.auroraRegistrationId = registrationId;
+
+      await connect(token, bgHandler);
       return registrationId;
     } on TimeoutException catch (e, s) {
       initCompleter = null;
@@ -114,6 +134,90 @@ class MethodChannelAuroraMessaging extends AuroraPushPlatform {
     } on Object {
       initCompleter = null;
       rethrow;
+    }
+  }
+
+  Future<void> connect(String token, Function? onMessage) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (active) return;
+    active = true;
+
+    try {
+      print("Connecting to WebSocket with token: $token");
+
+      // Close any existing connections before starting a new one
+      await subs?.cancel();
+      webChannel?.sink.close();
+
+      webChannel = WebSocketChannel.connect(
+        Uri.parse('wss://sub.pushed.ru/v1/$token'),
+      );
+
+      await webChannel?.ready;
+      // await setNewStatus(ServiceStatus.active);
+
+      subs = webChannel?.stream.listen((event) async {
+        var message = utf8.decode(event);
+        // await addLog("Pushed message: $message");
+        // await loggerAdd("Pushed message: $message");
+
+        if (message != "ONLINE") {
+          try {
+            var payload = json.decode(message);
+
+            if (payload is Map<String, dynamic>) {
+              var messageId = payload["messageId"]?.toString() ?? "";
+              var traceId = payload["mfTraceId"]?.toString() ?? "";
+
+              var lastMessageId = prefs.getString('lastMessageId');
+              if (lastMessageId != messageId) {
+                // await loggerAdd("Processing pushed message");
+                await prefs.setString('lastMessageId', messageId);
+
+                var response = json.encode({
+                  "messageId": messageId,
+                  if (traceId.isNotEmpty) "mfTraceId": traceId
+                });
+                webChannel?.sink.add(utf8.encode(response));
+
+                if (payload["data"] is String) {
+                  try {
+                    payload["data"] = json.decode(payload["data"]);
+                  } catch (e) {
+                    // await loggerAdd(
+                    //     "Failed to parse 'data' as JSON, using raw string");
+                    payload["data"] = {"body": payload["data"]};
+                  }
+                }
+
+                // Handle received message callback
+                final messageMap = {
+                  "data": {
+                    "title": payload["data"]["title"] ?? "",
+                    "body": payload["data"]["body"] ?? "You have a new message."
+                  }
+                };
+
+                if (onMessage != null) {
+                  await onMessage(messageMap);
+                }
+              }
+            } else {
+              // await loggerAdd("Received unexpected message format: $message");
+            }
+          } catch (e) {
+            // await loggerAdd("Error processing pushed message: $e");
+          }
+        }
+      }, onDone: () async {
+        active = false;
+        // await setNewStatus(ServiceStatus.disconnected);
+        await Future.delayed(const Duration(seconds: 1));
+        connect(token, onMessage);
+      });
+    } catch (e) {
+      // await loggerAdd("Error: $e");
+      connect(token, onMessage);
     }
   }
 }

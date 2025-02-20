@@ -17,6 +17,12 @@ dependencies:
     git:
       url: https://gitlab.com/omprussia/flutter/flutter-community-plugins/flutter_local_notifications_aurora.git
       ref: aurora-0.5.3
+  shared_preferences: ^2.3.3
+  shared_preferences_aurora:
+    git:
+      url: https://gitlab.com/omprussia/flutter/packages.git
+      path: packages/shared_preferences_aurora
+      ref: aurora-shared_preferences_aurora-0.5.4 
 
 dev_dependencies:
   flutter_test:

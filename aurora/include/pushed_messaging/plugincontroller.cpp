@@ -21,7 +21,7 @@
 PluginController::PluginController(PluginRegistrar *registrar)
     : m_notificationsChannel(std::make_unique<MethodChannel>(
           registrar->messenger(),
-          "friflex/pushed_messaging",
+          "pushed_messaging",
           &StandardMethodCodec::GetInstance())),
       m_notificationsClient(std::make_unique<Aurora::PushNotifications::Client>(qApp))
 
@@ -88,20 +88,20 @@ PluginController::PluginController(PluginRegistrar *registrar)
                     pushParams.emplace(std::make_pair(EncodableValue("title"), EncodableValue(push.title.toStdString())));
                     pushParams.emplace(std::make_pair(EncodableValue("message"), EncodableValue(push.message.toStdString())));
 
-                    Notification notification;
-                    notification.setAppName(tr("Push Receiver"));
-                    notification.setSummary(push.title);
-                    notification.setBody(push.message);
-                    notification.setIsTransient(false);
-                    notification.setItemCount(1);
-                    notification.setHintValue("x-nemo-feedback", "sms_exists");
-                    notification.setRemoteAction(defaultAction);
-                    notification.setUrgency(Notification::Urgency::Critical);
-                    notification.publish();
+                    // Notification notification;
+                    // notification.setAppName(tr("Push Receiver"));
+                    // notification.setSummary(push.title);
+                    // notification.setBody(push.message);
+                    // notification.setIsTransient(false);
+                    // notification.setItemCount(1);
+                    // notification.setHintValue("x-nemo-feedback", "sms_exists");
+                    // notification.setRemoteAction(defaultAction);
+                    // notification.setUrgency(Notification::Urgency::Critical);
+                    // notification.publish();
 
-                    // m_notificationsChannel->InvokeMethod(
-                    //     "Messaging#onMessage",
-                    //     std::make_unique<EncodableValue>(EncodableValue(pushParams)));
+                    m_notificationsChannel->InvokeMethod(
+                        "Messaging#onMessage",
+                        std::make_unique<EncodableValue>(EncodableValue(pushParams)));
                 }
             });
 }

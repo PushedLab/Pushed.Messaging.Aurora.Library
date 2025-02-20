@@ -5,7 +5,7 @@
 library pushed_messaging;
 
 export 'src/aurora_push_message.dart';
-export 'src/aurora_push_platform_interface.dart';
+export 'src/pushed_messaging_platform_interface.dart';
 export 'src/pushed_messaging.dart';
-export 'src/method_channel_messaging.dart';
+export 'src/pushed_messaging_aurora.dart';
 export 'src/aurora_push_exception.dart';
