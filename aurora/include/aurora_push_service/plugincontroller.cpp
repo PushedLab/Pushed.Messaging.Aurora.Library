@@ -174,11 +174,11 @@ void PluginController::_setRegistrationId(const QString &registrationId)
 {
     qDebug() << Q_FUNC_INFO << "Received registrationId:" << registrationId;
 
-    if (registrationId == m_registrationId)
-    {
-        qDebug() << "Registration ID is the same, skipping...";
-        return;
-    }
+    // if (registrationId == m_registrationId)
+    // {
+    //     qDebug() << "Registration ID is the same, skipping...";
+    //     return;
+    // }
 
     m_registrationId = registrationId;
 
@@ -186,5 +186,5 @@ void PluginController::_setRegistrationId(const QString &registrationId)
 
     m_notificationsChannel->InvokeMethod(
         "Messaging#applicationRegistered",
-        std::make_unique<EncodableValue>(EncodableValue(registrationId.toStdString())));
+        std::make_unique<EncodableValue>(EncodableValue(m_registrationId.toStdString())));
 }
