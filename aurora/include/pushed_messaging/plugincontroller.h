@@ -9,8 +9,8 @@
 #include <memory>
 #include "types.h"
 #include "pluginservice.h"
-//******************************************************************************
-//******************************************************************************
+// //******************************************************************************
+// //******************************************************************************
 class QQuickView;
 class PluginController : public QObject
 {
@@ -29,15 +29,7 @@ signals:
     void registrationIdChanged(const QString &registrationId);
     void pushMessageReceived(const Aurora::PushNotifications::Push &push);
 
-    // public slots:
-    //     void showGui();
-
-    // private slots:
-    //     void _setRegistrationId(const QString &registrationId);
-
 private:
-    // class impl;
-    // std::shared_ptr<impl> m_p;
     void on_method_call(const MethodCall &call, UniqueMethodResult result);
     void unimplemented(const EncodableValue *args, UniqueMethodResult result);
     void init(const EncodableValue *args, UniqueMethodResult result);
@@ -56,3 +48,5 @@ private slots:
 };
 
 #endif // APPLICATIONCONTROLLER_H
+//******************************************************************************
+//******************************************************************************

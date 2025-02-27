@@ -69,6 +69,8 @@ PluginController::PluginController(PluginRegistrar *registrar)
                 for (const auto &push : pushList)
                 {
                     QJsonDocument jsonDocument = QJsonDocument::fromJson(push.data.toUtf8());
+
+                    QString messageId = jsonDocument.object().value("messageId").toString();
                     QString notifyType = jsonDocument.object().value("mtype").toString();
 
                     if (notifyType == QStringLiteral("action"))
@@ -82,22 +84,12 @@ PluginController::PluginController(PluginRegistrar *registrar)
                                                                                PluginService::notifyDBusIface(),
                                                                                PluginService::notifyDBusMethod());
 
-                    qDebug() << Q_FUNC_INFO << push.title << push.message;
+                    qDebug() << Q_FUNC_INFO << push.title << push.message << push.data;
 
                     EncodableMap pushParams;
                     pushParams.emplace(std::make_pair(EncodableValue("title"), EncodableValue(push.title.toStdString())));
                     pushParams.emplace(std::make_pair(EncodableValue("message"), EncodableValue(push.message.toStdString())));
-
-                    // Notification notification;
-                    // notification.setAppName(tr("Push Receiver"));
-                    // notification.setSummary(push.title);
-                    // notification.setBody(push.message);
-                    // notification.setIsTransient(false);
-                    // notification.setItemCount(1);
-                    // notification.setHintValue("x-nemo-feedback", "sms_exists");
-                    // notification.setRemoteAction(defaultAction);
-                    // notification.setUrgency(Notification::Urgency::Critical);
-                    // notification.publish();
+                    pushParams.emplace(std::make_pair(EncodableValue("messageId"), EncodableValue(messageId.toStdString())));
 
                     m_notificationsChannel->InvokeMethod(
                         "Messaging#onMessage",

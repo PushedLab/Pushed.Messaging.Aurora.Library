@@ -5,52 +5,95 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:pushed_messaging/src/aurora_push_exception.dart';
-import 'package:pushed_messaging/src/aurora_push_message.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:pushed_messaging/src/pushed_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+
+import 'package:pushed_messaging/src/aurora_push_exception.dart';
+import 'package:pushed_messaging/src/aurora_push_message.dart';
 import 'pushed_messaging_platform_interface.dart';
+
+typedef BackgroundHandler = Future<void> Function(Map<dynamic, dynamic>);
 
 class PushedMessagingAurora extends PushedMessagingPlatform {
   WebSocketChannel? webChannel;
   StreamSubscription? subs;
-  Function? bgHandler;
   bool active = false;
+
+  // We store the user-provided background handler here:
+  static BackgroundHandler? onBackgroundMessage;
+
   @visibleForTesting
   static const channel = MethodChannel('pushed_messaging');
 
   @visibleForTesting
   static Completer<String>? initCompleter;
 
+  /// Set up method channel listeners.
+  /// Make sure to call this once (e.g. in your plugin setup or main())
+  /// so that we can handle incoming messages from the native side.
   static void setMethodCallHandlers() {
     WidgetsFlutterBinding.ensureInitialized();
     PushedMessagingAurora.channel.setMethodCallHandler((call) async {
       switch (call.method) {
         case 'Messaging#onMessage':
           final messageMap = Map<String, dynamic>.from(call.arguments);
-          print(messageMap);
-          PushedMessagingPlatform.messageController.sink.add(messageMap);
+          final messageId = messageMap['messageId'];
+          final dynamic traceId = messageMap['traceId'];
+          final prefs = await SharedPreferences.getInstance();
+
+          var lastMessageId = prefs.getString('lastMessageId');
+          await PushedMessagingPlatform.confirmDelivered(
+            PushedMessagingPlatform.pushToken!,
+            messageId,
+            'Aurora',
+            traceId,
+          );
+          // Check if this messageId has already been processed
+          if (lastMessageId != messageId) {
+            // If not, add it to the stream and update the lastMessageId
+            PushedMessagingPlatform.messageController.sink.add(messageMap);
+
+            // Store the current messageId in SharedPreferences to avoid processing the same one again
+            await prefs.setString('lastMessageId', messageId);
+
+            print("Aurora messageid : $messageId");
+            if (onBackgroundMessage != null) {
+              await onBackgroundMessage!.call(messageMap);
+            }
+          } else {
+            print("Duplicate message detected, skipping.");
+          }
+
+          // Optionally invoke background handler if present
           break;
+
         case 'Messaging#onReadinessChanged':
           final isAvailable = call.arguments as bool;
           if (!isAvailable) {
-            initCompleter?.completeError(AuroraPushException(
-              code: 'push_system_not_available',
-              message: 'todo: Push system is not available',
-            ));
+            initCompleter?.completeError(
+              AuroraPushException(
+                code: 'push_system_not_available',
+                message: 'Push system is not available',
+              ),
+            );
           }
           break;
+
         case 'Messaging#onRegistrationError':
-          // На данный момент от платформы не приходит информация о причине
-          // ошибки при регистрации. Также не понятно когда оно приходит.
+          // From the platform, we don't have a detailed reason.
+          // We just pass the error upward.
           final message = call.arguments.toString();
-          initCompleter?.completeError(AuroraPushException(
-            code: 'registration_error',
-            message: message,
-          ));
+          initCompleter?.completeError(
+            AuroraPushException(
+              code: 'registration_error',
+              message: message,
+            ),
+          );
           break;
+
         case 'Messaging#applicationRegistered':
           final registrationId = call.arguments as String;
           initCompleter?.complete(registrationId);
@@ -60,8 +103,10 @@ class PushedMessagingAurora extends PushedMessagingPlatform {
   }
 
   @override
-  Future<String> initialize(Function(Map<dynamic, dynamic>) bgHandler,
-      {required String applicationId}) async {
+  Future<String> init(
+    BackgroundHandler bgHandler, {
+    required String applicationId,
+  }) async {
     if (initCompleter != null) {
       throw AuroraPushException(
         code: 'init_completer_not_finished',
@@ -76,58 +121,55 @@ class PushedMessagingAurora extends PushedMessagingPlatform {
             'ApplicationId is empty. Set applicationId from Aurora Center.',
       );
     }
+
+    // Assign the user-provided background handler to our static reference
+    onBackgroundMessage = bgHandler;
+
     await channel.invokeMethod('Messaging#init', {
       'applicationId': applicationId,
     });
     initCompleter = Completer();
-    // Ждем исполнения Messaging#onReadinessChanged и Messaging#applicationRegistered
-    // Также может вернуться ошибка в Messaging#onRegistrationError
+
     try {
-      // При возникновении нетипичных ошибок Aurora не возвращает ошибки,
-      // поэтому нужно ставить timeout.
+      // We wait for 'Messaging#onReadinessChanged' and 'Messaging#applicationRegistered'
+      // or for a possible error in 'Messaging#onRegistrationError'
       final registrationId = await initCompleter!.future.timeout(
         const Duration(seconds: 5),
       );
-      // Сбрасываем initCompleter чтобы не вызывать потенциальных ошибок с
-      // получением нескольких колбеков от аврора-side плагина.
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? "";
-      final newToken =
-          await getNewToken(token, auroraRegistrationId: registrationId);
 
-      PushedMessagingPlatform.pushToken = newToken;
-      print(newToken);
-      if (newToken.isNotEmpty) {
-        await connect(newToken, bgHandler);
-      }
       initCompleter = null;
       PushedMessagingPlatform.auroraRegistrationId = registrationId;
 
-      await connect(token, bgHandler);
+      final prefs = await SharedPreferences.getInstance();
+      final oldToken = prefs.getString('token') ?? "";
+
+      // Suppose you have some logic to get a new token from your server:
+      final newToken = await getNewToken(
+        oldToken,
+        auroraRegistrationId: registrationId,
+      );
+      await prefs.setString('token', newToken);
+      PushedMessagingPlatform.pushToken = newToken;
+      print("Got new push token: $newToken");
+
+      if (newToken.isNotEmpty) {
+        await connect(newToken, bgHandler);
+      } else {
+        await connect(oldToken, bgHandler);
+      }
+
+      // If for any reason you want to attempt re-connect with old token:
+      // await connect(oldToken, bgHandler);
+      await setNewStatus(ServiceStatus.active);
       return registrationId;
     } on TimeoutException catch (e, s) {
       initCompleter = null;
-
-      /// Эта ошибка может происходить по разным причинам.
-      ///
-      /// К сожалению, сейчас api не предоставляет ошибок по каким именно
-      /// причинам не удалось получить [registrationId].
-      ///
-      /// Для получения логов запуска пуш сервиса запустите приложение
-      /// через консоль.
-      ///
-      /// Troubleshoot:
-      /// * Проверьте подключение телефона к Аврора Центру.
-      /// * Проверьте валидность [applicationId]. Если в консоли вы
-      /// видите "Can not request push notifications right now", значит
-      /// проблема с невалидным applicationId.
-      /// * Проверьте интернет соединение пользователя.
-      /// * Проверьте соединение с Аврора Центром.
+      await setNewStatus(ServiceStatus.disconnected);
       Error.throwWithStackTrace(
         AuroraPushException(
           code: 'response_timeout',
           message:
-              'initialize(applicationId: $applicationId) вернул TimeoutException',
+              'initialize(applicationId: $applicationId) returned TimeoutException',
         ),
         s,
       );
@@ -137,87 +179,109 @@ class PushedMessagingAurora extends PushedMessagingPlatform {
     }
   }
 
-  Future<void> connect(String token, Function? onMessage) async {
-    final prefs = await SharedPreferences.getInstance();
+  Future<void> connect(String token, BackgroundHandler? onMessage) async {
     if (active) return;
     active = true;
+
+    final prefs = await SharedPreferences.getInstance();
+
+    // Load the lastMessageId from SharedPreferences before processing any messages.
+    var lastMessageId = prefs.getString('lastMessageId');
 
     try {
       print("Connecting to WebSocket with token: $token");
 
-      // Close any existing connections before starting a new one
+      // Close any existing connections before starting the new one
       await subs?.cancel();
-      webChannel?.sink.close();
+      await webChannel?.sink.close();
 
       webChannel = WebSocketChannel.connect(
-        Uri.parse('wss://sub.pushed.ru/v1/$token'),
+        Uri.parse('wss://sub.pushed.dev/v2/open-websocket/$token'),
       );
 
+      // Await WebSocket readiness
       await webChannel?.ready;
-      // await setNewStatus(ServiceStatus.active);
 
-      subs = webChannel?.stream.listen((event) async {
-        var message = utf8.decode(event);
-        // await addLog("Pushed message: $message");
-        // await loggerAdd("Pushed message: $message");
+      // Ensure that the initial state is set and prevent processing duplicate messages.
+      subs = webChannel?.stream.listen(
+        (event) async {
+          var message = utf8.decode(event);
+          if (message != "ONLINE") {
+            try {
+              var payload = json.decode(message);
 
-        if (message != "ONLINE") {
-          try {
-            var payload = json.decode(message);
+              if (payload is Map<String, dynamic>) {
+                var messageId = payload["messageId"]?.toString() ?? "";
+                var traceId = payload["mfTraceId"]?.toString() ?? "";
+                print('Pushed messageId : $messageId');
 
-            if (payload is Map<String, dynamic>) {
-              var messageId = payload["messageId"]?.toString() ?? "";
-              var traceId = payload["mfTraceId"]?.toString() ?? "";
+                // Check if the messageId is different from the last processed messageId
+                if (lastMessageId != messageId) {
+                  // Store the new messageId in SharedPreferences to prevent future duplicates
+                  await prefs.setString('lastMessageId', messageId);
 
-              var lastMessageId = prefs.getString('lastMessageId');
-              if (lastMessageId != messageId) {
-                // await loggerAdd("Processing pushed message");
-                await prefs.setString('lastMessageId', messageId);
+                  // Acknowledge receipt to the server
+                  var response = json.encode({
+                    "messageId": messageId,
+                    if (traceId.isNotEmpty) "mfTraceId": traceId
+                  });
+                  webChannel?.sink.add(utf8.encode(response));
 
-                var response = json.encode({
-                  "messageId": messageId,
-                  if (traceId.isNotEmpty) "mfTraceId": traceId
-                });
-                webChannel?.sink.add(utf8.encode(response));
-
-                if (payload["data"] is String) {
-                  try {
-                    payload["data"] = json.decode(payload["data"]);
-                  } catch (e) {
-                    // await loggerAdd(
-                    //     "Failed to parse 'data' as JSON, using raw string");
-                    payload["data"] = {"body": payload["data"]};
+                  // Parse the message data and call the background handler if needed
+                  if (payload["data"] is String) {
+                    try {
+                      payload["data"] = json.decode(payload["data"]);
+                    } catch (_) {
+                      payload["data"] = {"body": payload["data"]};
+                    }
                   }
-                }
 
-                // Handle received message callback
-                final messageMap = {
-                  "data": {
-                    "title": payload["data"]["title"] ?? "",
-                    "body": payload["data"]["body"] ?? "You have a new message."
+                  // Format and process the message
+                  final messageMap = {
+                    "data": {
+                      "title": payload["data"]["title"] ?? "",
+                      "body":
+                          payload["data"]["body"] ?? "You have a new message.",
+                      "messageId": messageId, // Add messageId to the map
+                    },
+                  };
+                  print('Message map: $messageMap');
+
+                  // If we have a background handler, call it
+                  if (onMessage != null) {
+                    await onMessage(messageMap['data']!);
                   }
-                };
 
-                if (onMessage != null) {
-                  await onMessage(messageMap);
+                  // Update the lastMessageId after processing the message
+                  lastMessageId = messageId;
+                } else {
+                  print("Duplicate message detected, skipping.");
                 }
               }
-            } else {
-              // await loggerAdd("Received unexpected message format: $message");
+            } catch (e) {
+              print("Error processing pushed message: $e");
             }
-          } catch (e) {
-            // await loggerAdd("Error processing pushed message: $e");
           }
-        }
-      }, onDone: () async {
-        active = false;
-        // await setNewStatus(ServiceStatus.disconnected);
-        await Future.delayed(const Duration(seconds: 1));
-        connect(token, onMessage);
-      });
+        },
+        onDone: () async {
+          active = false;
+          // attempt reconnection after a brief delay
+          await Future.delayed(const Duration(seconds: 1));
+          connect(token, onMessage);
+        },
+        onError: (error) {
+          active = false;
+          // attempt reconnection on error
+          Future.delayed(const Duration(seconds: 1))
+              .then((_) => connect(token, onMessage));
+        },
+      );
     } catch (e) {
-      // await loggerAdd("Error: $e");
-      connect(token, onMessage);
+      active = false;
+      // attempt reconnection
+      Future.delayed(const Duration(seconds: 1))
+          .then((_) => connect(token, onMessage));
     }
   }
+
 }

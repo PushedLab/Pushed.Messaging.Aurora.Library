@@ -1,5 +1,5 @@
-#ifndef FLUTTER_PLUGIN_AURORA_PUSH_SERVICE_PLUGIN_H
-#define FLUTTER_PLUGIN_AURORA_PUSH_SERVICE_PLUGIN_H
+#ifndef FLUTTER_PLUGIN_PUSHED_DEMO_AURORA_PLUGIN_H
+#define FLUTTER_PLUGIN_PUSHED_DEMO_AURORA_PLUGIN_H
 
 #include <flutter/plugin_registrar.h>
 #include <pushed_messaging/globals.h>
@@ -22,4 +22,4 @@ private:
     std::unique_ptr<PluginController> m_plugin_controller;
 };
 
-#endif /* FLUTTER_PLUGIN_AURORA_PUSH_SERVICE_PLUGIN_H */
+#endif /* FLUTTER_PLUGIN_PUSHED_DEMO_AURORA_PLUGIN_H */

@@ -20,7 +20,7 @@ Future<void> backgroundMessage(Map<dynamic, dynamic> message) async {
     print("Aurora Background Message: $message");
 
     // Extract title and body from the message payload
-    String title = (message["data"]?["title"]) ?? "Уведомление";
+    String title = (message["title"]) ?? "Уведомление";
     String body = (message["data"]?["body"]) ?? "";
 
     if (title.isNotEmpty) await prefs.setString("last_title", title);
@@ -45,7 +45,7 @@ Future<void> backgroundMessage(Map<dynamic, dynamic> message) async {
 }
 
 void main() async {
-  await PushedMessaging().initialize(backgroundMessage,
+  await PushedMessaging().init(backgroundMessage,
       applicationId: 'appfluttest_cumsutpp82rl9tjniai0');
   runApp(const MyApp());
 }
@@ -66,7 +66,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   final pushes = <AuroraPushMessage>[];
-  final _auroraPushPlugin = const PushedMessaging();
+  final _auroraPushPlugin = PushedMessaging();
   StreamSubscription? messagesSubscription;
   String registrationId = '';
   int notificationCounterId = 0;
@@ -77,7 +77,7 @@ class _MyAppState extends State<MyApp> {
       wasInitialized = false;
     });
     try {
-      registrationId = await _auroraPushPlugin.initialize(
+      registrationId = await _auroraPushPlugin.init(
         // TODO: Add your applicationId from Aurora Center.
         backgroundMessage,
         applicationId: 'appfluttest_cumsutpp82rl9tjniai0',

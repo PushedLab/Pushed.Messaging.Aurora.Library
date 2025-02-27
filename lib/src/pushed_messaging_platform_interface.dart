@@ -4,6 +4,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer';
 
 import 'package:pushed_messaging/pushed_messaging.dart';
 import 'package:pushed_messaging/src/aurora_push_message.dart';
@@ -16,25 +17,29 @@ abstract class PushedMessagingPlatform extends PlatformInterface {
   /// Constructs a PushedMessagingPlatform.
   PushedMessagingPlatform() : super(token: _token);
 
+  var currentStatus = ServiceStatus.disconnected;
+
   static final Object _token = Object();
 
   static PushedMessagingPlatform? _instance;
+
+  static ServiceStatus status = ServiceStatus.notActive;
+
+  static String? pushToken;
+  static String? auroraRegistrationId;
 
   static var messageController =
       StreamController<Map<dynamic, dynamic>>.broadcast(sync: true);
   static var statusController =
       StreamController<ServiceStatus>.broadcast(sync: true);
 
-  static ServiceStatus status = ServiceStatus.notActive;
-  static String? pushToken;
-  static String? auroraRegistrationId;
   static Stream<Map<dynamic, dynamic>> get onMessage =>
       messageController.stream;
   static Stream<ServiceStatus> get onStatus => statusController.stream;
 
   /// The default instance of [PushedMessagingPlatform] to use.
   ///
-  /// Defaults to [MethodChannelAuroraPush].
+  /// Defaults to [PushedMessagingAurora].
   static PushedMessagingPlatform get instance {
     if (_instance == null) {
       PushedMessagingAurora.setMethodCallHandlers();
@@ -51,7 +56,7 @@ abstract class PushedMessagingPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  Future<String> initialize(Function(Map<dynamic, dynamic>) bgHandler,
+  Future<String> init(BackgroundHandler bgHandler,
       {required String applicationId}) {
     throw UnimplementedError('init() has not been implemented.');
   }
@@ -83,23 +88,28 @@ abstract class PushedMessagingPlatform extends PlatformInterface {
       {String? auroraRegistrationId}) async {
     var deviceSettings = [
       if (auroraRegistrationId != null)
-        {"deviceToken": auroraRegistrationId, "transportKind": "AuroraCenter"},
+        {"deviceToken": auroraRegistrationId, "transportKind": "Aurora"},
     ];
     final body = json.encode(<String, dynamic>{
       "clientToken": token,
-      if (deviceSettings.isNotEmpty) "deviceSetting": deviceSettings
+      "deviceSettings": deviceSettings
     });
+    print(body);
     try {
       var response = await http
-          .post(Uri.parse('https://sub.pushed.ru/tokens'),
+          .post(Uri.parse('https://sub.pushed.dev/v2/tokens'),
               headers: {"Content-Type": "application/json"}, body: body)
           .timeout(const Duration(seconds: 10),
               onTimeout: (() => throw Exception("TimeOut")));
-      token = json.decode(response.body)["token"];
-      print(token);
+      token = json.decode(response.body)["model"]["clientToken"];
     } catch (e) {
       token = "";
     }
     return token;
+  }
+
+  Future<void> setNewStatus(ServiceStatus status) async {
+    print('New status: $status');
+    statusController.sink.add(status);
   }
 }
