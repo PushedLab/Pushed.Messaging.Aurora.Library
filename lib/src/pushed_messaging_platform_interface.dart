@@ -94,13 +94,14 @@ abstract class PushedMessagingPlatform extends PlatformInterface {
       "clientToken": token,
       "deviceSettings": deviceSettings
     });
-    print(body);
     try {
       var response = await http
-          .post(Uri.parse('https://sub.pushed.dev/v2/tokens'),
+          .post(Uri.parse('https://sub.pushed.ru/v2/tokens'),
               headers: {"Content-Type": "application/json"}, body: body)
           .timeout(const Duration(seconds: 10),
               onTimeout: (() => throw Exception("TimeOut")));
+      final tokenResponse = response.body;
+      print('Token response: $tokenResponse');
       token = json.decode(response.body)["model"]["clientToken"];
     } catch (e) {
       token = "";

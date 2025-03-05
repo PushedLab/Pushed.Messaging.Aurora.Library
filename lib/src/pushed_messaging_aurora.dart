@@ -31,9 +31,7 @@ class PushedMessagingAurora extends PushedMessagingPlatform {
   @visibleForTesting
   static Completer<String>? initCompleter;
 
-  /// Set up method channel listeners.
-  /// Make sure to call this once (e.g. in your plugin setup or main())
-  /// so that we can handle incoming messages from the native side.
+  ///Запуск слушателей ивентов push daemon
   static void setMethodCallHandlers() {
     WidgetsFlutterBinding.ensureInitialized();
     PushedMessagingAurora.channel.setMethodCallHandler((call) async {
@@ -196,7 +194,7 @@ class PushedMessagingAurora extends PushedMessagingPlatform {
       await webChannel?.sink.close();
 
       webChannel = WebSocketChannel.connect(
-        Uri.parse('wss://sub.pushed.dev/v2/open-websocket/$token'),
+        Uri.parse('wss://sub.pushed.ru/v2/open-websocket/$token'),
       );
 
       // Await WebSocket readiness

@@ -91,6 +91,17 @@ PluginController::PluginController(PluginRegistrar *registrar)
                     pushParams.emplace(std::make_pair(EncodableValue("message"), EncodableValue(push.message.toStdString())));
                     pushParams.emplace(std::make_pair(EncodableValue("messageId"), EncodableValue(messageId.toStdString())));
 
+                    // Notification notification;
+                    // notification.setAppName(QCoreApplication::applicationName());
+                    // notification.setSummary(push.title);
+                    // notification.setBody(push.message);
+                    // notification.setIsTransient(false);
+                    // notification.setItemCount(1);
+                    // notification.setHintValue("x-nemo-feedback", "sms_exists");
+                    // notification.setRemoteAction(defaultAction);
+                    // notification.setUrgency(Notification::Urgency::Critical);
+                    // notification.publish();
+
                     m_notificationsChannel->InvokeMethod(
                         "Messaging#onMessage",
                         std::make_unique<EncodableValue>(EncodableValue(pushParams)));

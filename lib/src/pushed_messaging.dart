@@ -12,8 +12,11 @@ enum ServiceStatus { notActive, disconnected, active }
 class PushedMessaging {
   // const PushedMessaging();
 
-  static String? get token => PushedMessagingPlatform.pushToken;
+  static String? get token => PushedMessagingPlatform.pushToken;  
 
+  static String? get registrationId =>
+      PushedMessagingPlatform.auroraRegistrationId; 
+      
   static ServiceStatus get status => PushedMessagingPlatform.status;
 
   /// Инициализация пуш сервиса.
@@ -31,5 +34,4 @@ class PushedMessaging {
 
   /// [Stream] с состоянием соединения Аврора центра или Pushed.
   Stream<ServiceStatus> get onStatus => PushedMessagingPlatform.onStatus;
-
 }
