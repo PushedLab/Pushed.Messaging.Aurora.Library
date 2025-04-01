@@ -1,19 +1,18 @@
-// Copyright (c) 2023, Friflex LLC. Please see the AUTHORS file
-// for details. Use of this source code is governed by a
-// BSD-style license that can be found in the LICENSE file.
-
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:pushed_messaging/src/pushed_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:path/path.dart' as p;
 
 import 'package:pushed_messaging/src/aurora_push_exception.dart';
 import 'package:pushed_messaging/src/aurora_push_message.dart';
 import 'pushed_messaging_platform_interface.dart';
+import 'package:path_provider/path_provider.dart';
 
 typedef BackgroundHandler = Future<void> Function(Map<dynamic, dynamic>);
 
@@ -31,8 +30,26 @@ class PushedMessagingAurora extends PushedMessagingPlatform {
   @visibleForTesting
   static Completer<String>? initCompleter;
 
+  Future<void> saveToDownloads(String event) async {
+    try {
+      var tDir = await getDownloadsDirectory();
+      if (tDir == null) {
+        print("Downloads directory is null.");
+        return;
+      }
+      File logFile = File(p.join(tDir.path, "pushed.log"));
+      await logFile.writeAsString(
+        "${DateTime.now().toIso8601String()}: $event\n",
+        mode: FileMode.append,
+      );
+    } catch (e, stackTrace) {
+      print("Error saving log: $e");
+      print(stackTrace);
+    }
+  }
+
   ///Запуск слушателей ивентов push daemon
-  static void setMethodCallHandlers() {
+  static void setAuroraMethodCallHandlers() {
     WidgetsFlutterBinding.ensureInitialized();
     PushedMessagingAurora.channel.setMethodCallHandler((call) async {
       switch (call.method) {
@@ -84,12 +101,14 @@ class PushedMessagingAurora extends PushedMessagingPlatform {
           // From the platform, we don't have a detailed reason.
           // We just pass the error upward.
           final message = call.arguments.toString();
-          initCompleter?.completeError(
-            AuroraPushException(
-              code: 'registration_error',
-              message: message,
-            ),
-          );
+          // initCompleter?.completeError(
+          //   AuroraPushException(
+          //     code: 'registration_error',
+
+          //     message: message,
+          //   ),
+          // );
+          // initCompleter?.complete('');
           break;
 
         case 'Messaging#applicationRegistered':
@@ -99,7 +118,6 @@ class PushedMessagingAurora extends PushedMessagingPlatform {
       }
     });
   }
-
   @override
   Future<String> init(
     BackgroundHandler bgHandler, {
@@ -120,20 +138,36 @@ class PushedMessagingAurora extends PushedMessagingPlatform {
       );
     }
 
-    // Assign the user-provided background handler to our static reference
     onBackgroundMessage = bgHandler;
 
-    await channel.invokeMethod('Messaging#init', {
-      'applicationId': applicationId,
-    });
-    initCompleter = Completer();
-
     try {
-      // We wait for 'Messaging#onReadinessChanged' and 'Messaging#applicationRegistered'
-      // or for a possible error in 'Messaging#onRegistrationError'
+      await channel.invokeMethod('Messaging#init', {
+        'applicationId': applicationId,
+      });
+
+      initCompleter = Completer();
+
+
+      /// **Timeout Handling**
       final registrationId = await initCompleter!.future.timeout(
         const Duration(seconds: 5),
+        onTimeout: () {
+          initCompleter?.completeError(AuroraPushException(
+            code: 'response_timeout',
+            message:
+                'initialize(applicationId: $applicationId) returned TimeoutException',
+          ));
+          return ''; // Return empty string as fallback instead of crashing
+        },
       );
+
+      if (registrationId.isEmpty) {
+        throw AuroraPushException(
+          code: 'registration_failed',
+          message: 'Registration ID is empty after timeout.',
+        );
+      }
+
 
       initCompleter = null;
       PushedMessagingPlatform.auroraRegistrationId = registrationId;
@@ -141,43 +175,34 @@ class PushedMessagingAurora extends PushedMessagingPlatform {
       final prefs = await SharedPreferences.getInstance();
       final oldToken = prefs.getString('token') ?? "";
 
-      // Suppose you have some logic to get a new token from your server:
       final newToken = await getNewToken(
         oldToken,
         auroraRegistrationId: registrationId,
       );
+
       await prefs.setString('token', newToken);
       PushedMessagingPlatform.pushToken = newToken;
       print("Got new push token: $newToken");
 
-      if (newToken.isNotEmpty) {
-        await connect(newToken, bgHandler);
-      } else {
-        await connect(oldToken, bgHandler);
-      }
+      await multipushedConnect(newToken, bgHandler);
 
-      // If for any reason you want to attempt re-connect with old token:
-      // await connect(oldToken, bgHandler);
       await setNewStatus(ServiceStatus.active);
       return registrationId;
     } on TimeoutException catch (e, s) {
+
       initCompleter = null;
       await setNewStatus(ServiceStatus.disconnected);
-      Error.throwWithStackTrace(
-        AuroraPushException(
-          code: 'response_timeout',
-          message:
-              'initialize(applicationId: $applicationId) returned TimeoutException',
-        ),
-        s,
-      );
-    } on Object {
+
+      return ''; // Return empty string instead of crashing
+    } on Object catch (e, s) {
+
       initCompleter = null;
       rethrow;
     }
   }
 
-  Future<void> connect(String token, BackgroundHandler? onMessage) async {
+  Future<void> multipushedConnect(
+      String token, BackgroundHandler? onMessage) async {
     if (active) return;
     active = true;
 
@@ -265,21 +290,20 @@ class PushedMessagingAurora extends PushedMessagingPlatform {
           active = false;
           // attempt reconnection after a brief delay
           await Future.delayed(const Duration(seconds: 1));
-          connect(token, onMessage);
+          multipushedConnect(token, onMessage);
         },
         onError: (error) {
           active = false;
           // attempt reconnection on error
           Future.delayed(const Duration(seconds: 1))
-              .then((_) => connect(token, onMessage));
+              .then((_) => multipushedConnect(token, onMessage));
         },
       );
     } catch (e) {
       active = false;
       // attempt reconnection
       Future.delayed(const Duration(seconds: 1))
-          .then((_) => connect(token, onMessage));
+          .then((_) => multipushedConnect(token, onMessage));
     }
   }
-
 }

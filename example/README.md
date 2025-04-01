@@ -1,6 +1,6 @@
-# aurora_push_example
+# pushed_demo_aurora
 
-Demonstrates how to use the aurora_push plugin.
+A new Flutter project.
 
 ## Getting Started
 

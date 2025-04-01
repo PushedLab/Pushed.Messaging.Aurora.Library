@@ -42,6 +42,12 @@
 ** BSD-style license that can be found in the LICENSE file.
 *******************************************************************************/
 
+/*******************************************************************************
+** Copyright (c) 2025, MultiFactor. Please see the AUTHORS file
+** for details. Use of this source code is governed by a
+** BSD-style license that can be found in the LICENSE file.
+*******************************************************************************/
+
 #include "pluginservice.h"
 
 #include <QtCore/QString>

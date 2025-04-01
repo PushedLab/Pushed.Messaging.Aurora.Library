@@ -1,0 +1,19 @@
+[Desktop Entry]
+Type=Application
+Name=MultiPushed 
+X-Nemo-Single-Instance=no
+X-Aurora-Single-Cover=yes
+X-Nemo-Application-Type=silica-qt5
+Comment=A new Flutter project.
+Icon=com.multipushed.mp
+Exec=/usr/bin/com.multipushed.mp %u
+
+[X-Application]
+Permissions=UserDirs;Internet;PushNotifications
+OrganizationName=com.multipushed
+ApplicationName=mp
+
+[X-Task PushedMessaging]
+Type=periodic
+Permissions=Internet
+Conditions=internet

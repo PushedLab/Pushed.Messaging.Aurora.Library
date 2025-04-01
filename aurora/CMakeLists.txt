@@ -18,9 +18,9 @@ set(CMAKE_AUTOUIC ON)
 set(APP_ID_PATH /usr/share/${PROJECT_NAME}) 
 set(APP_ID_FILE applicationidz)
 
-add_definitions(-DDBUS_SERVICE="com.example.pushed_demo_aurora")
-add_definitions(-DDBUS_PATH="/com/example/pushed_demo_aurora")
-add_definitions(-DDBUS_INTERFACE="com.example.pushed_demo_aurora")
+add_definitions(-DDBUS_SERVICE="com.multipushed.mp")
+add_definitions(-DDBUS_PATH="/com/example/MultiPushed")
+add_definitions(-DDBUS_INTERFACE="com.multipushed.mp")
 add_definitions(-DAPP_ID_FILE_PATH="${APP_ID_PATH}/${APP_ID_FILE}")
 
 find_package(PkgConfig REQUIRED)

@@ -1,18 +1,41 @@
+import 'package:dbus/dbus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'dart:async';
-
 import 'package:flutter/services.dart';
-import 'package:pushed_messaging/pushed_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:pushed_demo_aurora/org_freedesktop_notifications.dart';
+import 'package:pushed_messaging/pushed_messaging.dart';
+import 'package:workmanager/workmanager.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+
+import 'main_screen.dart';
+
+import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
-// ignore_for_file: use_build_context_synchronously
+
+late OrgFreedesktopNotifications object;
+int? activePush;
+
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    switch (task) {
+      case "PushedMessaging":
+        await PushedMessaging().init(
+          backgroundMessage,
+          applicationId: 'appfluttest_cumsutpp82rl9tjniai0',
+        );
+        await Future.delayed(const Duration(seconds: 900));
+        return Future.value(true);
+      default:
+        return Future.value(false);
+    }
+  });
+}
 
 @pragma('vm:entry-point')
 Future<void> backgroundMessage(Map<dynamic, dynamic> message) async {
-  // Ensure widgets and bindings are initialized
-  WidgetsFlutterBinding.ensureInitialized();
-  // await loggerAdd('Background message works');
-
   try {
     // Initialize SharedPreferences to save notification data
     final prefs = await SharedPreferences.getInstance();
@@ -20,231 +43,132 @@ Future<void> backgroundMessage(Map<dynamic, dynamic> message) async {
     print("Aurora Background Message: $message");
 
     // Extract title and body from the message payload
-    String title = (message["title"]) ?? "Уведомление";
-    String body = (message["data"]?["body"]) ?? "";
+    String title = message["title"] ?? "Уведомление";
+    String body = message["message"] ?? message["body"] ?? "Новое уведомление";
 
     if (title.isNotEmpty) await prefs.setString("last_title", title);
     if (body.isNotEmpty) await prefs.setString("last_body", body);
 
-    // Initialize the Aurora notification plugin
-    final FlutterLocalNotificationsPlugin notifications =
-        FlutterLocalNotificationsPlugin();
+    // final FlutterLocalNotificationsPlugin notifications =
+    //     FlutterLocalNotificationsPlugin();
 
-    // Display the notification using Aurora notification system
-    await notifications.show(
-        0, // Notification ID (can be any unique value)
-        title, // Notification title
-        body, // Notification body
-        null // Optional payload data
-        );
+    // // Display the notification using Aurora notification system
+    // await notifications.show(
+    //     0, // Notification ID (can be any unique value)
+    //     title != '' ? title : "Уведомление", // Notification title
+    //     body, // Notification body
+    //     null // Optional payload data
+    //     );
 
-    // await addLog("Notification sent: $title - $body");
+    // Initialize DBus client
+    final client = DBusClient.session();
+    object = OrgFreedesktopNotifications(
+        client,
+        'org.freedesktop.Notifications',
+        DBusObjectPath('/org/freedesktop/Notifications'));
+
+    // Close the last active notification if any
+    if (activePush != null) {
+      await object.callCloseNotification(activePush!);
+    }
+
+    // Display notification using OrgFreedesktopNotifications
+    activePush = await object.callNotify(
+      "MultiPushed",
+      0,
+      ' ', // App Icon (empty)
+      title != '' ? title : "Уведомление",
+      body,
+      ["deny", 'Закрыть'], 
+      {
+        "x-nemo-feedback": const DBusString("sms_exists"),
+        "urgency": const DBusByte(2),
+        "x-aurora-essential": const DBusBoolean(true),
+        "x-aurora-silent-actions": DBusArray.string(["deny"])
+      },
+      -1,
+    );
+
+    print("Notification sent: $title - $body");
   } catch (e) {
-    // await addLog("Error in notification: $e");
+    print("Error in notification: $e");
   }
 }
 
 void main() async {
-  await PushedMessaging().init(backgroundMessage,
-      applicationId: 'appfluttest_cumsutpp82rl9tjniai0');
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await PushedMessaging().init(
+    backgroundMessage,
+    applicationId: 'appfluttest_cumsutpp82rl9tjniai0',
+  );
+
+  await Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
+  await Workmanager().registerPeriodicTask(
+    '1',
+    'PushedMessaging',
+  );
   runApp(const MyApp());
 }
 
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+  // This widget is the root of your application.
   @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  @override
-  void initState() {
-    // TODO: implement initState
-    super.initState();
-    initPlatformState(context);
-  }
-
-  final pushes = <AuroraPushMessage>[];
-  final _auroraPushPlugin = PushedMessaging();
-  StreamSubscription? messagesSubscription;
-  String registrationId = '';
-  int notificationCounterId = 0;
-  bool wasInitialized = false;
-
-  Future<void> initPlatformState(BuildContext context) async {
-    setState(() {
-      wasInitialized = false;
-    });
-    try {
-      registrationId = await _auroraPushPlugin.init(
-        // TODO: Add your applicationId from Aurora Center.
-        backgroundMessage,
-        applicationId: 'appfluttest_cumsutpp82rl9tjniai0',
-      );
-      if (registrationId.isNotEmpty) setState(() {});
-      messagesSubscription ??=
-          _auroraPushPlugin.onMessage.listen((event) async {
-        if (!mounted) return;
-        // setState(() {
-        //   pushes.add(event);
-        // });
-        final notificationPlugin = FlutterLocalNotificationsPlugin();
-        // await notificationPlugin.show(
-        //   notificationCounterId++,
-        //   "#$notificationCounterId ${event.title}",
-        //   "${event.message}",
-        //   null,
-        // );
-      });
-    } on Object catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
-    }
-    if (!mounted || registrationId.isEmpty) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Your registration id: $registrationId'),
-        action: SnackBarAction(
-          label: 'Copy',
-          onPressed: () async {
-            await Clipboard.setData(ClipboardData(text: registrationId));
-          },
+  Widget build(BuildContext context) {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+    final ThemeData theme = ThemeData(
+      // Define the default brightness and colors.
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: const Color.fromRGBO(15, 15, 15, 1),
+      // 240,244,247,1
+      primaryColor: const Color.fromRGBO(249, 250, 254, 1),
+      //accentColor: Colors.cyan[600],
+      // Define the default font family.
+      fontFamily: 'Roboto',
+      // Define the default TextTheme. Use this to specify the default
+      // text styling for headlines, titles, bodies of text, and more.
+      textTheme: TextTheme(
+        displayLarge: GoogleFonts.roboto(
+            fontSize: 22.0,
+            color: const Color.fromRGBO(249, 250, 254, 1),
+            fontWeight: FontWeight.w700),
+        bodyMedium: const TextStyle(
+          fontSize: 18.0,
+          color: Color.fromRGBO(249, 250, 254, 1),
+          fontFamily: 'Roboto',
         ),
       ),
     );
-    setState(() {
-      wasInitialized = true;
-    });
-  }
-
-  @override
-  void dispose() {
-    messagesSubscription?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return MaterialApp(
-      theme: ThemeData(useMaterial3: true),
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Text('Plugin example app'),
-        ),
-        body: Column(
-          children: [
-            if (!wasInitialized)
-              const Text(
-                'Tap FAB to initialize PushedMessaging.',
-              ),
-            if (registrationId.isNotEmpty)
-              ListTile(
-                title: Text(registrationId),
-                trailing: IconButton(
-                  icon: const Icon(Icons.copy),
-                  onPressed: () async {
-                    await Clipboard.setData(
-                      ClipboardData(text: registrationId),
-                    );
-                  },
-                ),
-              ),
-            Expanded(
-              child: ListView.builder(
-                // Чтобы самые свежие пуши отображались в начале
-                itemCount: pushes.length,
-                itemBuilder: (context, index) {
-                  final push = pushes.reversed.toList()[index];
-                  return ListTile(
-                    title: Text('Title: ${push.title}'),
-                    subtitle: Text('Message: ${push.message}'),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ListTileScreen(
-                            title: push.title ?? '',
-                            message: push.message ?? '',
-                            data: push.data ?? '',
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-        floatingActionButton: Builder(
-          builder: (context) {
-            return FloatingActionButton(
-              tooltip: 'Long tap to re-initialize',
-              onPressed: () async {
-                await initPlatformState(context);
-              },
-              child: const Icon(Icons.replay),
-            );
-          },
-        ),
+      debugShowCheckedModeBanner: false,
+      localizationsDelegates: [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: [
+        const Locale('en', ''), // English
+        const Locale('ru', ''), // Russian (or any other supported locales)
+      ],
+      localeResolutionCallback:
+          (Locale? loc, Iterable<Locale> supportedLocales) {
+        // Fallback to the first supported locale if no match is found
+        for (Locale supportedLocale in supportedLocales) {
+          if (supportedLocale.languageCode == loc?.languageCode) {
+            return supportedLocale;
+          }
+        }
+        return supportedLocales.first;
+      },
+      theme: theme.copyWith(
+        colorScheme: theme.colorScheme.copyWith(secondary: Colors.cyan[600]),
       ),
-    );
-  }
-}
-
-class ListTileScreen extends StatelessWidget {
-  const ListTileScreen({
-    super.key,
-    this.title = '',
-    this.message = '',
-    this.data = '',
-  });
-
-  final String title;
-  final String message;
-  final String data;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Push info'),
-      ),
-      body: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (title.isNotEmpty)
-            ListTile(
-              title: Text('Title: $title'),
-              onTap: () async {
-                await Clipboard.setData(
-                  ClipboardData(text: title),
-                );
-              },
-            ),
-          if (message.isNotEmpty)
-            ListTile(
-              title: Text('Message: $message'),
-              onTap: () async {
-                await Clipboard.setData(
-                  ClipboardData(text: message),
-                );
-              },
-            ),
-          if (data.isNotEmpty)
-            ListTile(
-              title: Text('Data: $data'),
-              onTap: () async {
-                await Clipboard.setData(
-                  ClipboardData(text: data),
-                );
-              },
-            ),
-        ],
-      ),
+      home: MainScreen(),
     );
   }
 }

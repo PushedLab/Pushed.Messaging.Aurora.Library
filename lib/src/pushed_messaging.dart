@@ -1,7 +1,3 @@
-// Copyright (c) 2023, Friflex LLC. Please see the AUTHORS file
-// for details. Use of this source code is governed by a
-// BSD-style license that can be found in the LICENSE file.
-
 import 'package:pushed_messaging/pushed_messaging.dart';
 import 'package:pushed_messaging/src/aurora_push_message.dart';
 import 'pushed_messaging_platform_interface.dart';
@@ -15,17 +11,16 @@ class PushedMessaging {
   static String? get token => PushedMessagingPlatform.pushToken;  
 
   static String? get registrationId =>
-      PushedMessagingPlatform.auroraRegistrationId; 
+      PushedMessagingPlatform.auroraRegistrationId;
       
   static ServiceStatus get status => PushedMessagingPlatform.status;
 
   /// Инициализация пуш сервиса.
   ///
   /// Можно вызывать несколько раз, но не имеет практического смысла.
-  Future<String> init(BackgroundHandler bgHandler,
-      {required String applicationId}) {
+  Future<String> init(BackgroundHandler bgHandler, {String? applicationId}) {
     return PushedMessagingPlatform.instance
-        .init(bgHandler, applicationId: applicationId);
+        .init(bgHandler, applicationId: applicationId!);
   }
 
   /// [Stream] с приходящими пушами от Аврора центра или Pushed.

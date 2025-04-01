@@ -1,8 +1,10 @@
-# SPDX-FileCopyrightText: Copyright 2023 Open Mobile Platform LLC <community@omp.ru>
-# SPDX-License-Identifier: BSD-3-Clause
+# CMAKE_SYSTEM_PROCESSOR - CPU architecture name (armv7l, aarch64, x86_64)
+# CMAKE_BUILD_TYPE       - Build mode (debug, profile, release)
+# PSDK_VERSION           - Build psdk exact version
+# PSDK_MAJOR             - Build psdk major version
 
 cmake_minimum_required(VERSION 3.10)
-project(com.example.aurora_push_example LANGUAGES CXX)
+project(com.multipushed.mp LANGUAGES CXX)
 
 include(GNUInstallDirs)
 
@@ -19,10 +21,11 @@ set(CMAKE_SKIP_RPATH OFF)
 set(CMAKE_INSTALL_RPATH "\$ORIGIN/../share/${BINARY_NAME}/lib")
 
 find_package(PkgConfig REQUIRED)
+find_package(Qt5 COMPONENTS Core REQUIRED)
 pkg_check_modules(FlutterEmbedder REQUIRED IMPORTED_TARGET flutter-embedder)
 
 add_executable(${BINARY_NAME} main.cpp ${FLUTTER_DIR}/generated_plugin_registrant.cpp)
-target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::FlutterEmbedder)
+target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::FlutterEmbedder Qt5::Core)
 target_include_directories(${BINARY_NAME} PRIVATE ${FLUTTER_DIR})
 
 include(flutter/generated_plugins.cmake)
@@ -43,8 +46,9 @@ install(DIRECTORY ${PROJECT_BINARY_DIR}/bundle/lib            DESTINATION ${PACK
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES desktop/${BINARY_NAME}.desktop DESTINATION ${DESKTOP_INSTALL_DIR})
 
-foreach(ICONS_SIZE 86x86 108x108 128x128 172x172)
-    install(FILES icons/${ICONS_SIZE}.png
-            RENAME ${BINARY_NAME}.png
-            DESTINATION ${ICONS_INSTALL_ROOT_DIR}/${ICONS_SIZE}/apps/)
-endforeach(ICONS_SIZE)
+set(ICON_SIZE 128x128)
+
+# Install the single icon
+install(FILES icons/${ICON_SIZE}.png
+        RENAME ${BINARY_NAME}.png
+        DESTINATION ${ICONS_INSTALL_ROOT_DIR}/${ICON_SIZE}/apps/)

@@ -1,0 +1,18 @@
+{
+  "pushed_alert": {
+    "alert": "Alert",
+    "title": "Pushed",
+    "body": "The service is active",
+    "message": "For delivery messages, the application needs to ensure the operation of background processes.\nPlease give the appropriate permission"
+  },
+  "main": {
+    "service_status": "Service status",
+    "service_active": "Active",
+    "service_not_active": "Not Active",
+    "service_disconnected": "Not connected",
+    "client_token": "Client token",
+    "copy_token": "Copy token",
+    "last_message": "Last message"
+    }
+}
+

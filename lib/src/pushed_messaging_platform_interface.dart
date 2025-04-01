@@ -1,17 +1,10 @@
-// Copyright (c) 2023, Friflex LLC. Please see the AUTHORS file
-// for details. Use of this source code is governed by a
-// BSD-style license that can be found in the LICENSE file.
-
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer';
 
 import 'package:pushed_messaging/pushed_messaging.dart';
-import 'package:pushed_messaging/src/aurora_push_message.dart';
-import 'package:pushed_messaging/src/pushed_messaging_aurora.dart';
+
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
 abstract class PushedMessagingPlatform extends PlatformInterface {
   /// Constructs a PushedMessagingPlatform.
@@ -23,7 +16,7 @@ abstract class PushedMessagingPlatform extends PlatformInterface {
 
   static PushedMessagingPlatform? _instance;
 
-  static ServiceStatus status = ServiceStatus.notActive;
+  static ServiceStatus status = ServiceStatus.disconnected;
 
   static String? pushToken;
   static String? auroraRegistrationId;
@@ -42,7 +35,7 @@ abstract class PushedMessagingPlatform extends PlatformInterface {
   /// Defaults to [PushedMessagingAurora].
   static PushedMessagingPlatform get instance {
     if (_instance == null) {
-      PushedMessagingAurora.setMethodCallHandlers();
+      PushedMessagingAurora.setAuroraMethodCallHandlers();
       instance = PushedMessagingAurora();
     }
     return _instance!;
@@ -87,13 +80,14 @@ abstract class PushedMessagingPlatform extends PlatformInterface {
   Future<String> getNewToken(String token,
       {String? auroraRegistrationId}) async {
     var deviceSettings = [
-      if (auroraRegistrationId != null)
+      if (auroraRegistrationId != null && auroraRegistrationId.isNotEmpty)
         {"deviceToken": auroraRegistrationId, "transportKind": "Aurora"},
     ];
     final body = json.encode(<String, dynamic>{
       "clientToken": token,
       "deviceSettings": deviceSettings
     });
+    print(body);
     try {
       var response = await http
           .post(Uri.parse('https://sub.pushed.ru/v2/tokens'),

@@ -11,7 +11,6 @@
 #include <QtGui/QGuiApplication>
 #include <QtQml/QQmlContext>
 #include <QtQuick/QQuickView>
-// #include <auroraapp.h>
 #include <nemonotifications-qt5/notification.h>
 
 #include <pushed_messaging/pushed_messaging_plugin.h>
@@ -90,17 +89,6 @@ PluginController::PluginController(PluginRegistrar *registrar)
                     pushParams.emplace(std::make_pair(EncodableValue("title"), EncodableValue(push.title.toStdString())));
                     pushParams.emplace(std::make_pair(EncodableValue("message"), EncodableValue(push.message.toStdString())));
                     pushParams.emplace(std::make_pair(EncodableValue("messageId"), EncodableValue(messageId.toStdString())));
-
-                    // Notification notification;
-                    // notification.setAppName(QCoreApplication::applicationName());
-                    // notification.setSummary(push.title);
-                    // notification.setBody(push.message);
-                    // notification.setIsTransient(false);
-                    // notification.setItemCount(1);
-                    // notification.setHintValue("x-nemo-feedback", "sms_exists");
-                    // notification.setRemoteAction(defaultAction);
-                    // notification.setUrgency(Notification::Urgency::Critical);
-                    // notification.publish();
 
                     m_notificationsChannel->InvokeMethod(
                         "Messaging#onMessage",

@@ -1,7 +1,3 @@
-// Copyright (c) 2023, Friflex LLC. Please see the AUTHORS file
-// for details. Use of this source code is governed by a
-// BSD-style license that can be found in the LICENSE file.
-
 // ignore_for_file: prefer_const_constructors_in_immutables
 
 import 'package:flutter/foundation.dart';
